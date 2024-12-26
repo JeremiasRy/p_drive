@@ -64,6 +64,8 @@ func main() {
 	fs, err := services.NewFileservice()
 	fc := controllers.NewFileController(fs)
 
+	ac := controllers.NewAuthController()
+
 	if err != nil {
 		log.Fatalf("Failed to create fileservice client %s", err)
 	}
@@ -81,7 +83,6 @@ func main() {
 		switch r.Method {
 		case http.MethodPost:
 			{
-				log.Println("Handling file upload")
 				fc.HandlePostUpload(w, r)
 			}
 		case http.MethodGet:
@@ -94,6 +95,9 @@ func main() {
 			}
 		}
 	})
+	http.HandleFunc("/login", vc.HandleGetLogin)
+	http.HandleFunc("/login/github", ac.HandleGithubLogin)
+	http.HandleFunc("/login/github/callback", ac.HandleGithubCallback)
 
 	log.Println("Starting a server at :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))

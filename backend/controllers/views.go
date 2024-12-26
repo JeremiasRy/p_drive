@@ -42,6 +42,16 @@ func (vc *ViewsController) HandleGetMain(w http.ResponseWriter, r *http.Request)
 	vc.renderTemplate(w, data)
 }
 
+func (vc *ViewsController) HandleGetLogin(w http.ResponseWriter, r *http.Request) {
+	login, err := vc.readHTMLFile(filepath.Join("views", "login.html"))
+	if err != nil {
+		log.Fatalf("Failed to load HTML content %s\n", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(login)
+}
+
 func (vc *ViewsController) renderTemplate(w http.ResponseWriter, data LayoutData) {
 	layoutPath := filepath.Join("views", "layout.html")
 

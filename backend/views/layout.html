@@ -12,8 +12,10 @@
     <div class="tab-list" role="tablist">
         <button hx-get="/files" role="tab" aria-controls="tab-content" hx-target="#tab-content"
             hx-swap="innerHTML">Files</button>
-        <button hx-get="/upload" role="tab" aria-selected="false" aria-controls="tab-content" hx-target="#tab-content"
+        <button hx-get="/upload" role="tab" aria-controls="tab-content" hx-target="#tab-content"
             hx-swap="innerHTML">Upload</button>
+        <button hx-get="/login" role="tab" aria-controls="tab-content" hx-target="#tab-content"
+            hx-swap="innerHTML">Login</button>
     </div>
     <div id="tab-content">
         <h1>Hi and welcome to your <b>P</b>ersonal_<b>Drive</b></h1>
