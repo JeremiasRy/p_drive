@@ -1,7 +1,8 @@
 package controllers
 
 import (
-	"context"
+	"backend/services"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,38 +21,59 @@ var (
 )
 
 type AuthController struct {
+	us *services.UserService
 }
 
-func NewAuthController() *AuthController {
-	return &AuthController{}
+func NewAuthController(us *services.UserService) *AuthController {
+	return &AuthController{us: us}
 }
 
 func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
-	if state != "9fg9d8fb9d8fb9dfb89d8fb" {
+	if state != "supersecret" {
 		http.Error(w, "State mismatch", http.StatusBadRequest)
 		return
 	}
 	code := r.URL.Query().Get("code")
 
-	token, err := OAUTH_CONFIG.Exchange(context.Background(), code)
+	token, err := OAUTH_CONFIG.Exchange(r.Context(), code)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Could not get token: %s", err), http.StatusBadRequest)
+		log.Printf("Could not get token: %s\n%s\n", err, code)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
-	client := OAUTH_CONFIG.Client(context.Background(), token)
+	client := OAUTH_CONFIG.Client(r.Context(), token)
 	userResp, err := client.Get("https://api.github.com/user/emails")
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Could not create request: %s", err), http.StatusInternalServerError)
+		log.Printf("Could not create request: %s\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 	defer userResp.Body.Close()
-	log.Printf("%v\n", *userResp)
+
+	var userEmail []struct{ email string }
+	err = json.NewDecoder(userResp.Body).Decode(&userEmail)
+
+	if err != nil {
+		log.Printf("Failed to parse response body %v\n", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	err = ac.us.NewUser(userEmail[0].email)
+
+	if err != nil {
+		log.Printf("Failed to create new user %v, %v\n", userEmail, err)
+		http.Error(w, fmt.Sprintf("Failed to authenticate: %s", err), http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Success?")
 }
 
 func (ac *AuthController) HandleGithubLogin(w http.ResponseWriter, r *http.Request) {
-	state := "9fg9d8fb9d8fb9dfb89d8fb"
+	state := "supersecret"
 	url := OAUTH_CONFIG.AuthCodeURL(state, oauth2.AccessTypeOnline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }

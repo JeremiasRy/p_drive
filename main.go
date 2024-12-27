@@ -2,12 +2,14 @@ package main
 
 import (
 	"backend/controllers"
+	"backend/database"
 	"backend/services"
 	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -21,23 +23,41 @@ var (
 	POSTGRES_LOCATION = os.Getenv("POSTGRES_LOCATION")
 )
 
-func handler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case "GET":
-		// Handle GET request
-		fmt.Fprintf(w, "Handling GET request")
-	case "POST":
-		// Handle POST request
-		fmt.Fprintf(w, "Handling POST request")
-	default:
-		// Handle unsupported methods
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+func waitForDb() (*sql.DB, error) {
+	var db *sql.DB
+	var err error
+	for i := 1; i < 5; i++ {
+		db, err = sql.Open("postgres", POSTGRES_URL)
+		if err == nil {
+			err = db.Ping()
+			if err == nil {
+				return db, nil
+			}
+			log.Printf("Database was not available, waiting %s...", time.Second<<i)
+			time.Sleep(time.Second << i)
+		}
 	}
+	return nil, fmt.Errorf("could not reach database %v", err)
+}
+
+func waitForMigration() (*migrate.Migrate, error) {
+	var m *migrate.Migrate
+	var err error
+	for i := 1; i < 5; i++ {
+		m, err = migrate.New("file:///migrations", POSTGRES_URL)
+		if err != nil {
+			log.Printf("Database was not available for migrations waiting %s...", time.Second<<i)
+			time.Sleep(time.Second << i)
+			continue
+		}
+		return m, nil
+	}
+	return nil, fmt.Errorf("failed to create migration %v", err)
 }
 
 func main() {
 	log.Println("Starting to initialize media gateway server")
-	db, err := sql.Open("postgres", POSTGRES_URL)
+	db, err := waitForDb()
 	if err != nil {
 		log.Fatalf("Could not connect to the DB: %v\n", err)
 	}
@@ -45,13 +65,13 @@ func main() {
 
 	log.Println("Initialized database connection")
 
-	m, err := migrate.New("file:///migrations", POSTGRES_URL)
+	m, err := waitForMigration()
 
 	if err != nil {
 		log.Fatalf("Could not create migrate instance: %v\n", err)
 	}
 
-	log.Println("Running migrations")
+	log.Println("Running migrations...")
 
 	err = m.Up()
 
@@ -61,10 +81,13 @@ func main() {
 
 	log.Println("Migrations succesful")
 
+	ud := database.NewUsersDb(db)
+	us := services.NewUserService(ud)
+
 	fs, err := services.NewFileservice()
 	fc := controllers.NewFileController(fs)
 
-	ac := controllers.NewAuthController()
+	ac := controllers.NewAuthController(us)
 
 	if err != nil {
 		log.Fatalf("Failed to create fileservice client %s", err)

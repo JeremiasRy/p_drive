@@ -15,16 +15,16 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile.backend
+      dockerfile: Dockerfile
     container_name: backend
     volumes:
-      - ./backend/migrations:/migrations
+      - ./migrations:/migrations
     develop:
       watch:
         - action: rebuild
-          path: ./backend
+          path: ./
         - action: restart
-          path: ./backend
+          path: ./
     ports:
       - "8080:8080"
     env_file:
@@ -48,6 +48,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    ports:
+      - "5432:5432"
     networks:
       - app-network
 

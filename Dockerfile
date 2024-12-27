@@ -1,10 +1,10 @@
 FROM golang:1.22.5-alpine AS builder
 
 WORKDIR /app
-COPY ./backend/go.mod ./backend/go.sum ./
+COPY ./go.mod ./go.sum ./
 RUN go mod download
 
-COPY ./backend/ ./
+COPY ./ ./
 
 RUN go build -o server .
 
