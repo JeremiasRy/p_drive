@@ -1,6 +1,7 @@
 package main
 
 import (
+	"backend/config"
 	"backend/controllers"
 	"backend/database"
 	"backend/services"
@@ -16,18 +17,13 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
-var (
-	POSTGRES_URL      = fmt.Sprintf("postgres://%s:%s@postgres:5432/%s?sslmode=disable", POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_USER)
-	POSTGRES_USER     = os.Getenv("POSTGRES_USER")
-	POSTGRES_PASSWORD = os.Getenv("POSTGRES_PASSWORD")
-	POSTGRES_LOCATION = os.Getenv("POSTGRES_LOCATION")
-)
+var c = config.GetConfig()
 
 func waitForDb() (*sql.DB, error) {
 	var db *sql.DB
 	var err error
 	for i := 1; i < 5; i++ {
-		db, err = sql.Open("postgres", POSTGRES_URL)
+		db, err = sql.Open("postgres", c.POSTGRES_URL)
 		if err == nil {
 			err = db.Ping()
 			if err == nil {
@@ -44,7 +40,7 @@ func waitForMigration() (*migrate.Migrate, error) {
 	var m *migrate.Migrate
 	var err error
 	for i := 1; i < 5; i++ {
-		m, err = migrate.New("file:///migrations", POSTGRES_URL)
+		m, err = migrate.New("file:///migrations", c.POSTGRES_URL)
 		if err != nil {
 			log.Printf("Database was not available for migrations waiting %s...", time.Second<<i)
 			time.Sleep(time.Second << i)
@@ -87,7 +83,9 @@ func main() {
 	fs, err := services.NewFileservice()
 	fc := controllers.NewFileController(fs)
 
-	ac := controllers.NewAuthController(us)
+	ss := services.NewSessionService()
+
+	ac := controllers.NewAuthController(us, ss)
 
 	if err != nil {
 		log.Fatalf("Failed to create fileservice client %s", err)

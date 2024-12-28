@@ -1,49 +1,46 @@
 package controllers
 
 import (
+	"backend/config"
 	"backend/services"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 
 	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/github"
-)
-
-var (
-	GITHUB_CLIENT_ID     = os.Getenv("GITHUB_CLIENT_ID")
-	GITHUB_CLIENT_SECRET = os.Getenv("GITHUB_CLIENT_SECRET")
-	BACKEND_BASE_URL     = os.Getenv("BACKEND_BASE_URL")
-	REDIRECT_URL         = fmt.Sprintf("%s/login/github/callback", BACKEND_BASE_URL)
-	OAUTH_CONFIG         = &oauth2.Config{ClientID: GITHUB_CLIENT_ID, ClientSecret: GITHUB_CLIENT_SECRET, RedirectURL: REDIRECT_URL, Scopes: []string{"user:email"}, Endpoint: github.Endpoint}
 )
 
 type AuthController struct {
 	us *services.UserService
+	ss *services.SessionService
 }
 
-func NewAuthController(us *services.UserService) *AuthController {
-	return &AuthController{us: us}
+func NewAuthController(us *services.UserService, ss *services.SessionService) *AuthController {
+	return &AuthController{us: us, ss: ss}
 }
+
+var c = config.GetConfig()
 
 func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
-	if state != "supersecret" {
+	session := ac.ss.GetSession(w, r)
+
+	if state != session.Values["verifier"] {
 		http.Error(w, "State mismatch", http.StatusBadRequest)
 		return
 	}
+
 	code := r.URL.Query().Get("code")
 
-	token, err := OAUTH_CONFIG.Exchange(r.Context(), code)
+	token, err := c.OAUTH_CONFIG.Exchange(r.Context(), code)
 	if err != nil {
 		log.Printf("Could not get token: %s\n%s\n", err, code)
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
-	client := OAUTH_CONFIG.Client(r.Context(), token)
+	client := c.OAUTH_CONFIG.Client(r.Context(), token)
 	userResp, err := client.Get("https://api.github.com/user/emails")
 	if err != nil {
 		log.Printf("Could not create request: %s\n", err)
@@ -61,7 +58,7 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err = ac.us.NewUser(userEmail[0].email)
+	err = ac.us.NewUser(userEmail[0].email, services.GITHUB)
 
 	if err != nil {
 		log.Printf("Failed to create new user %v, %v\n", userEmail, err)
@@ -69,11 +66,27 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	log.Printf("Success?")
+	user, err := ac.us.GetUserByEmail(userEmail[0].email)
+
+	if err != nil {
+		log.Printf("Failed to fetch user after creation %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	session.Values["current_user"] = user.ID
+	session.Save(r, w)
+
+	http.Redirect(w, r, r.URL.Host, http.StatusPermanentRedirect)
 }
 
 func (ac *AuthController) HandleGithubLogin(w http.ResponseWriter, r *http.Request) {
-	state := "supersecret"
-	url := OAUTH_CONFIG.AuthCodeURL(state, oauth2.AccessTypeOnline)
+	state := oauth2.GenerateVerifier()
+	session := ac.ss.GetSession(w, r)
+
+	session.Values["verifier"] = state
+	session.Save(r, w)
+
+	url := c.OAUTH_CONFIG.AuthCodeURL(state, oauth2.AccessTypeOnline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }
