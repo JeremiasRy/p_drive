@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"backend/.gen/personal_drive/public/model"
 	"html/template"
 	"log"
 	"net/http"
@@ -17,16 +18,6 @@ func NewViewsController() *ViewsController {
 	return &ViewsController{}
 }
 
-func (vc *ViewsController) HandleGetFiles(w http.ResponseWriter, r *http.Request) {
-	home, err := vc.readHTMLFile(filepath.Join("views", "files.html"))
-	if err != nil {
-		log.Fatalf("Failed to load HTML content %s\n", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	w.Write(home)
-}
-
 func (vc *ViewsController) HandleGetUpload(w http.ResponseWriter, r *http.Request) {
 	upload, err := vc.readHTMLFile(filepath.Join("views", "upload.html"))
 	if err != nil {
@@ -37,9 +28,19 @@ func (vc *ViewsController) HandleGetUpload(w http.ResponseWriter, r *http.Reques
 	w.Write(upload)
 }
 
-func (vc *ViewsController) HandleGetMain(w http.ResponseWriter, r *http.Request) {
+func (vc *ViewsController) HandleGetRoot(w http.ResponseWriter, r *http.Request) {
 	data := LayoutData{}
 	vc.renderTemplate(w, data)
+}
+
+func (vc *ViewsController) HandleGetMain(w http.ResponseWriter, r *http.Request, u *model.Users) {
+	home, err := vc.readHTMLFile(filepath.Join("views", "files.html"))
+	if err != nil {
+		log.Fatalf("Failed to load HTML content %s\n", err)
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Write(home)
 }
 
 func (vc *ViewsController) HandleGetLogin(w http.ResponseWriter, r *http.Request) {

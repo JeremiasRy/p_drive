@@ -4,6 +4,7 @@ import (
 	"backend/config"
 	"backend/controllers"
 	"backend/database"
+	"backend/middleware"
 	"backend/services"
 	"database/sql"
 	"fmt"
@@ -15,9 +16,11 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/gorilla/sessions"
 )
 
 var c = config.GetConfig()
+var store = sessions.NewCookieStore([]byte(c.SESSION_KEY))
 
 func waitForDb() (*sql.DB, error) {
 	var db *sql.DB
@@ -77,20 +80,22 @@ func main() {
 
 	log.Println("Migrations succesful")
 
+	// session settings
+	store.Options = &sessions.Options{
+		Path:     "/",
+		Domain:   "",
+		MaxAge:   0,
+		HttpOnly: true,
+		Secure:   false,
+	}
+
 	ud := database.NewUsersDb(db)
 	us := services.NewUserService(ud)
 
-	fs, err := services.NewFileservice()
-	fc := controllers.NewFileController(fs)
+	//fs, err := services.NewFileservice()
+	//fc := controllers.NewFileController(fs)
 
-	ss := services.NewSessionService()
-
-	ac := controllers.NewAuthController(us, ss)
-
-	if err != nil {
-		log.Fatalf("Failed to create fileservice client %s", err)
-	}
-
+	ac := controllers.NewAuthController(us, store)
 	vc := controllers.NewViewsController()
 
 	if vc == nil {
@@ -98,24 +103,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	http.HandleFunc("/", vc.HandleGetMain)
-	http.HandleFunc("/files", vc.HandleGetFiles)
-	http.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodPost:
-			{
-				fc.HandlePostUpload(w, r)
-			}
-		case http.MethodGet:
-			{
-				vc.HandleGetUpload(w, r)
-			}
-		default:
-			{
-				http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-			}
-		}
-	})
+	http.HandleFunc("/", vc.HandleGetRoot)
+	http.Handle("/main", middleware.NewEnsureAuth(ud, store, vc.HandleGetMain))
+
 	http.HandleFunc("/login", vc.HandleGetLogin)
 	http.HandleFunc("/login/github", ac.HandleGithubLogin)
 	http.HandleFunc("/login/github/callback", ac.HandleGithubCallback)

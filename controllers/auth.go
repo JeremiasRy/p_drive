@@ -8,23 +8,30 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
 )
 
 type AuthController struct {
-	us *services.UserService
-	ss *services.SessionService
+	us    *services.UserService
+	store *sessions.CookieStore
 }
 
-func NewAuthController(us *services.UserService, ss *services.SessionService) *AuthController {
-	return &AuthController{us: us, ss: ss}
+func NewAuthController(us *services.UserService, store *sessions.CookieStore) *AuthController {
+	return &AuthController{us: us, store: store}
 }
 
 var c = config.GetConfig()
 
 func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Request) {
 	state := r.URL.Query().Get("state")
-	session := ac.ss.GetSession(w, r)
+	session, err := ac.store.Get(r, c.SESSION_NAME)
+
+	if err != nil {
+		log.Printf("Failed to fetch sesssion %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	if state != session.Values["verifier"] {
 		http.Error(w, "State mismatch", http.StatusBadRequest)
@@ -58,6 +65,28 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	user, err := ac.us.GetUserByEmail(userEmail[0].email)
+
+	if err != nil {
+		log.Printf("Database failure when checking does user exist %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	if user != nil {
+		session.Values["current_user"] = user.ID.String()
+		err = session.Save(r, w)
+
+		if err != nil {
+			log.Printf("Failed to save session %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		http.Redirect(w, r, "/", http.StatusPermanentRedirect)
+		return
+	}
+
 	err = ac.us.NewUser(userEmail[0].email, services.GITHUB)
 
 	if err != nil {
@@ -66,26 +95,44 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	user, err := ac.us.GetUserByEmail(userEmail[0].email)
+	user, err = ac.us.GetUserByEmail(userEmail[0].email)
 
 	if err != nil {
-		log.Printf("Failed to fetch user after creation %v\n", err)
+		log.Printf("Database failure when checking does user exist %v\n", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	session.Values["current_user"] = user.ID
-	session.Save(r, w)
+	session.Values["current_user"] = user.ID.String()
+	err = session.Save(r, w)
 
-	http.Redirect(w, r, r.URL.Host, http.StatusPermanentRedirect)
+	if err != nil {
+		log.Printf("Failed to save session %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	http.Redirect(w, r, "/", http.StatusPermanentRedirect)
 }
 
 func (ac *AuthController) HandleGithubLogin(w http.ResponseWriter, r *http.Request) {
 	state := oauth2.GenerateVerifier()
-	session := ac.ss.GetSession(w, r)
+	session, err := ac.store.Get(r, c.SESSION_NAME)
 
+	if err != nil {
+		log.Printf("Failed to fetch sesssion %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	session.Values["verifier"] = state
-	session.Save(r, w)
+
+	err = session.Save(r, w)
+
+	if err != nil {
+		log.Printf("Failed to save session %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	url := c.OAUTH_CONFIG.AuthCodeURL(state, oauth2.AccessTypeOnline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)

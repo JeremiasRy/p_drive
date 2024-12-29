@@ -6,6 +6,7 @@ import (
 	"database/sql"
 
 	"github.com/go-jet/jet/v2/postgres"
+	"github.com/google/uuid"
 )
 
 type UsersDb struct {
@@ -17,7 +18,7 @@ func NewUsersDb(db *sql.DB) *UsersDb {
 }
 
 func (db *UsersDb) InsertNewUser(email string, authStrategy string) error {
-	stmt := table.Users.INSERT(table.Users.Email).VALUES(email, authStrategy)
+	stmt := table.Users.INSERT(table.Users.Email, table.Users.AuthStrategy).VALUES(email, authStrategy)
 	_, err := stmt.Exec(db.db)
 	return err
 }
@@ -25,6 +26,18 @@ func (db *UsersDb) InsertNewUser(email string, authStrategy string) error {
 func (db *UsersDb) GetUserByEmail(email string) (*model.Users, error) {
 	var user model.Users
 	stmt := table.Users.SELECT(table.Users.AllColumns).WHERE(table.Users.Email.EQ(postgres.String(email)))
+
+	err := stmt.Query(db.db, &user)
+
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (db *UsersDb) GetUserByID(id string) (*model.Users, error) {
+	var user model.Users
+	stmt := table.Users.SELECT(table.Users.AllColumns).WHERE(table.Users.ID.EQ(postgres.UUID(uuid.MustParse(id))))
 
 	err := stmt.Query(db.db, &user)
 

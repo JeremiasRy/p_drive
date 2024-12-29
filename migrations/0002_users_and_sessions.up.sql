@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS users(
     id UUID default gen_random_uuid() PRIMARY KEY,
     email varchar(256) unique,
-    auth_strategy smallint not null
+    auth_strategy text not null
 );
 
 ALTER TABLE IF EXISTS file_meta_data
