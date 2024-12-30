@@ -104,7 +104,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", vc.HandleGetRoot)
-	http.Handle("/main", middleware.NewEnsureAuth(ud, store, vc.HandleGetMain))
+	http.Handle("/main/", middleware.NewEnsureAuth(ud, store, vc.HandleGetMain))
 
 	http.HandleFunc("/login", vc.HandleGetLogin)
 	http.HandleFunc("/login/github", ac.HandleGithubLogin)

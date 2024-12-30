@@ -17,9 +17,10 @@ func NewUsersDb(db *sql.DB) *UsersDb {
 	return &UsersDb{db: db}
 }
 
-func (db *UsersDb) InsertNewUser(email string, authStrategy string) error {
-	stmt := table.Users.INSERT(table.Users.Email, table.Users.AuthStrategy).VALUES(email, authStrategy)
+func (db *UsersDb) InsertNewUser(email string) error {
+	stmt := table.Users.INSERT(table.Users.Email).VALUES(email).RETURNING(table.Users.ID)
 	_, err := stmt.Exec(db.db)
+
 	return err
 }
 

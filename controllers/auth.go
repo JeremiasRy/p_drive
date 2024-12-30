@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/gorilla/sessions"
 	"golang.org/x/oauth2"
@@ -33,7 +34,7 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	if state != session.Values["verifier"] {
+	if state != session.Values[c.SESSION_VERIFIER_KEY] {
 		http.Error(w, "State mismatch", http.StatusBadRequest)
 		return
 	}
@@ -65,16 +66,19 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	user, err := ac.us.GetUserByEmail(userEmail[0].email)
+	err = ac.us.NewUser(userEmail[0].email)
 
-	if err != nil {
-		log.Printf("Database failure when checking does user exist %v\n", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	if isDuplicateUserError(err) {
 
-	if user != nil {
-		session.Values["current_user"] = user.ID.String()
+		user, err := ac.us.GetUserByEmail(userEmail[0].email)
+
+		if err != nil {
+			log.Printf("Database failure when checking does user exist %v\n", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		session.Values[c.SESSION_CURRENT_USER_KEY] = user.ID.String()
 		err = session.Save(r, w)
 
 		if err != nil {
@@ -84,35 +88,11 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		}
 
 		http.Redirect(w, r, "/", http.StatusPermanentRedirect)
-		return
-	}
-
-	err = ac.us.NewUser(userEmail[0].email, services.GITHUB)
-
-	if err != nil {
+	} else if err != nil {
 		log.Printf("Failed to create new user %v, %v\n", userEmail, err)
 		http.Error(w, fmt.Sprintf("Failed to authenticate: %s", err), http.StatusInternalServerError)
 		return
 	}
-
-	user, err = ac.us.GetUserByEmail(userEmail[0].email)
-
-	if err != nil {
-		log.Printf("Database failure when checking does user exist %v\n", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	session.Values["current_user"] = user.ID.String()
-	err = session.Save(r, w)
-
-	if err != nil {
-		log.Printf("Failed to save session %v", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	http.Redirect(w, r, "/", http.StatusPermanentRedirect)
 }
 
 func (ac *AuthController) HandleGithubLogin(w http.ResponseWriter, r *http.Request) {
@@ -124,16 +104,20 @@ func (ac *AuthController) HandleGithubLogin(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	session.Values["verifier"] = state
+	session.Values[c.SESSION_VERIFIER_KEY] = state
 
 	err = session.Save(r, w)
 
 	if err != nil {
-		log.Printf("Failed to save session %v", err)
+		log.Printf("Failed to save session %v\n", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	url := c.OAUTH_CONFIG.AuthCodeURL(state, oauth2.AccessTypeOnline)
 	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
+}
+
+func isDuplicateUserError(err error) bool {
+	return strings.Contains(err.Error(), "duplicate key value violates unique constraint \"users_email_key\"")
 }

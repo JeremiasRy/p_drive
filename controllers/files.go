@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"backend/.gen/personal_drive/public/model"
 	"backend/services"
 	"fmt"
 	"log"
@@ -15,7 +16,7 @@ func NewFileController(service *services.FileService) *FileController {
 	return &FileController{service: service}
 }
 
-func (fc *FileController) HandlePostUpload(w http.ResponseWriter, r *http.Request) {
+func (fc *FileController) HandlePostUpload(w http.ResponseWriter, r *http.Request, u *model.Users) {
 	err := r.ParseMultipartForm(10 << 24)
 
 	if err != nil {

@@ -7,40 +7,46 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type ViewsController struct{}
-
-type LayoutData struct {
-}
 
 func NewViewsController() *ViewsController {
 	return &ViewsController{}
 }
 
-func (vc *ViewsController) HandleGetUpload(w http.ResponseWriter, r *http.Request) {
-	upload, err := vc.readHTMLFile(filepath.Join("views", "upload.html"))
+func (vc *ViewsController) HandleGetRoot(w http.ResponseWriter, r *http.Request) {
+	layout, err := vc.readHTMLFile(filepath.Join("views", "layout.html"))
+
 	if err != nil {
-		log.Fatalf("Failed to load HTML content %s\n", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		log.Printf("Failed to load HTML content %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	w.Write(upload)
-}
 
-func (vc *ViewsController) HandleGetRoot(w http.ResponseWriter, r *http.Request) {
-	data := LayoutData{}
-	vc.renderTemplate(w, data)
+	w.Write(layout)
 }
 
 func (vc *ViewsController) HandleGetMain(w http.ResponseWriter, r *http.Request, u *model.Users) {
-	home, err := vc.readHTMLFile(filepath.Join("views", "files.html"))
+	homePath := filepath.Join("views", "home.html")
+
+	folderPath := strings.TrimPrefix(r.URL.Path, "/main/")
+
+	template, err := template.ParseFiles(homePath)
+
 	if err != nil {
 		log.Fatalf("Failed to load HTML content %s\n", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Write(home)
+	err = template.Execute(w, struct{ Folder string }{Folder: folderPath})
+
+	log.Printf("err: %v\n", err)
+
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 func (vc *ViewsController) HandleGetLogin(w http.ResponseWriter, r *http.Request) {
@@ -53,7 +59,7 @@ func (vc *ViewsController) HandleGetLogin(w http.ResponseWriter, r *http.Request
 	w.Write(login)
 }
 
-func (vc *ViewsController) renderTemplate(w http.ResponseWriter, data LayoutData) {
+func (vc *ViewsController) renderTemplate(w http.ResponseWriter) {
 	layoutPath := filepath.Join("views", "layout.html")
 
 	template, err := template.ParseFiles(layoutPath)
@@ -63,7 +69,7 @@ func (vc *ViewsController) renderTemplate(w http.ResponseWriter, data LayoutData
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 	}
 
-	template.Execute(w, data)
+	template.Execute(w, struct{}{})
 }
 
 func (vc *ViewsController) readHTMLFile(filename string) ([]byte, error) {
