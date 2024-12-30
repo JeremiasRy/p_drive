@@ -1,7 +1,7 @@
 <h1>My Drive</h1>
 
-<div id="files" hx-get="/main/{{.User}}">
-
+<div id="files" hx-get="/files/{{.UserID}}">
+    Loading files...
 </div>
 
 <form id="create-folder" hx-post="/folders">

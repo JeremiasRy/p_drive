@@ -3,7 +3,7 @@ package middleware
 import (
 	"backend/.gen/personal_drive/public/model"
 	"backend/config"
-	"backend/database"
+	"backend/services"
 	"fmt"
 	"log"
 	"net/http"
@@ -15,7 +15,7 @@ type AuthenticatedHandler func(http.ResponseWriter, *http.Request, *model.Users)
 
 type EnsureAuth struct {
 	handler AuthenticatedHandler
-	db      *database.UsersDb
+	us      *services.UserService
 	store   *sessions.CookieStore
 }
 
@@ -49,7 +49,7 @@ func (ea *EnsureAuth) GetAuthenticatedUser(r *http.Request) (*model.Users, error
 		return nil, fmt.Errorf("no current_user in session.Values")
 	}
 
-	user, err := ea.db.GetUserByID(userId)
+	user, err := ea.us.GetUserByID(userId)
 
 	if err != nil {
 		return nil, err
@@ -58,6 +58,6 @@ func (ea *EnsureAuth) GetAuthenticatedUser(r *http.Request) (*model.Users, error
 	return user, nil
 }
 
-func NewEnsureAuth(db *database.UsersDb, store *sessions.CookieStore, handlerToWrap AuthenticatedHandler) *EnsureAuth {
-	return &EnsureAuth{db: db, store: store, handler: handlerToWrap}
+func NewEnsureAuth(us *services.UserService, store *sessions.CookieStore, handlerToWrap AuthenticatedHandler) *EnsureAuth {
+	return &EnsureAuth{us: us, store: store, handler: handlerToWrap}
 }

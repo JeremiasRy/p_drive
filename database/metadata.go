@@ -1,11 +1,7 @@
 package database
 
-import "database/sql"
+type MetadataDb struct{}
 
-type MetadataDb struct {
-	db *sql.DB
-}
-
-func NewMetaDataDb(db *sql.DB) *MetadataDb {
-	return &MetadataDb{db: db}
+func NewMetaDataDb() *MetadataDb {
+	return &MetadataDb{}
 }

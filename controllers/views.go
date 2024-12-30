@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
 type ViewsController struct{}
@@ -31,8 +30,6 @@ func (vc *ViewsController) HandleGetRoot(w http.ResponseWriter, r *http.Request)
 func (vc *ViewsController) HandleGetMain(w http.ResponseWriter, r *http.Request, u *model.Users) {
 	homePath := filepath.Join("views", "home.html")
 
-	folderPath := strings.TrimPrefix(r.URL.Path, "/main/")
-
 	template, err := template.ParseFiles(homePath)
 
 	if err != nil {
@@ -40,11 +37,12 @@ func (vc *ViewsController) HandleGetMain(w http.ResponseWriter, r *http.Request,
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-	err = template.Execute(w, struct{ Folder string }{Folder: folderPath})
-
-	log.Printf("err: %v\n", err)
+	err = template.Execute(w, struct {
+		UserID string
+	}{UserID: u.ID.String()})
 
 	if err != nil {
+		log.Printf("Failed to render template: %v\n", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }

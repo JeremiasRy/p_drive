@@ -89,8 +89,9 @@ func main() {
 		Secure:   false,
 	}
 
-	ud := database.NewUsersDb(db)
-	us := services.NewUserService(ud)
+	ud := database.NewUsersDb()
+	fd := database.NewFoldersDatabase()
+	us := services.NewUserService(db, ud, fd)
 
 	//fs, err := services.NewFileservice()
 	//fc := controllers.NewFileController(fs)
@@ -104,7 +105,7 @@ func main() {
 	}
 
 	http.HandleFunc("/", vc.HandleGetRoot)
-	http.Handle("/main/", middleware.NewEnsureAuth(ud, store, vc.HandleGetMain))
+	http.Handle("/main/", middleware.NewEnsureAuth(us, store, vc.HandleGetMain))
 
 	http.HandleFunc("/login", vc.HandleGetLogin)
 	http.HandleFunc("/login/github", ac.HandleGithubLogin)

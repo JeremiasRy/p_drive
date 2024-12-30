@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS folders(
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name TEXT NOT NULL,
+    name TEXT NOT NULL UNIQUE,
     parent_id UUID NULL
 );
 
