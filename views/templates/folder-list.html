@@ -1,0 +1,12 @@
+{{ define "folder-list" }}
+<div id="folders" class="folders">
+    <ul>
+        {{ range . }}
+        <li class="folders__folder-item"><a class="folder-item__folder-link" href="/folders/{{ .ID }}">{{ .Name }}</a>
+        </li>
+        {{ else }}
+        <li>No folders found.</li>
+        {{ end }}
+    </ul>
+</div>
+{{ end }}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type FileController struct {
@@ -14,6 +15,12 @@ type FileController struct {
 
 func NewFileController(service *services.FileService) *FileController {
 	return &FileController{service: service}
+}
+
+func HandleGetFiles(w http.ResponseWriter, r *http.Request, u *model.Users) {
+	folder := strings.Split(r.URL.Path, "/")
+	log.Printf("%v\n", folder)
+	w.Write([]byte{'h', 'e', 'l'})
 }
 
 func (fc *FileController) HandlePostUpload(w http.ResponseWriter, r *http.Request, u *model.Users) {

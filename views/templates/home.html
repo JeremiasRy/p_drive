@@ -1,0 +1,12 @@
+{{ define "home" }}
+<header>
+    <h1>My Drive</h1>
+</header>
+<div id="drive-content">
+    <div id="drive-folders" hx-get="/folders" hx-trigger="load" hx-target="#drive-folders" hx-swap="innerHTML">
+        Loading folders...
+    </div>
+
+    {{ template "upload" . }}
+</div>
+{{ end }}

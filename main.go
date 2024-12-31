@@ -91,13 +91,16 @@ func main() {
 
 	ud := database.NewUsersDb()
 	fd := database.NewFoldersDatabase()
+
+	fs := services.NewFoldersService(db, fd)
 	us := services.NewUserService(db, ud, fd)
 
 	//fs, err := services.NewFileservice()
 	//fc := controllers.NewFileController(fs)
 
 	ac := controllers.NewAuthController(us, store)
-	vc := controllers.NewViewsController()
+	vc := controllers.NewViewsController(fs)
+	fc := controllers.NewFoldersController(fs)
 
 	if vc == nil {
 		log.Fatalf("Failed to initialize view controller")
@@ -105,7 +108,8 @@ func main() {
 	}
 
 	http.HandleFunc("/", vc.HandleGetRoot)
-	http.Handle("/main/", middleware.NewEnsureAuth(us, store, vc.HandleGetMain))
+	http.Handle("/main", middleware.NewEnsureAuth(us, store, vc.HandleGetHome))
+	http.Handle("/folders", middleware.NewEnsureAuth(us, store, fc.HandleFolders))
 
 	http.HandleFunc("/login", vc.HandleGetLogin)
 	http.HandleFunc("/login/github", ac.HandleGithubLogin)

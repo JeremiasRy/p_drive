@@ -1,0 +1,6 @@
+{{ define "folder-input" }}
+<form id="create-folder" hx-post="/folders" hx-target="#folders-target" hx-swap="innerHTML">
+    <input type="text" name="folder-name" minLength="1" required>
+    <button>Create Folder</button>
+</form>
+{{ end }}
