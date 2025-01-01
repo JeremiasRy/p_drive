@@ -7,6 +7,9 @@ import (
 	"log"
 	"net/http"
 	"path/filepath"
+	"strings"
+
+	"github.com/google/uuid"
 )
 
 type FoldersController struct {
@@ -18,14 +21,15 @@ func NewFoldersController(fs *services.FoldersService) *FoldersController {
 }
 
 func (fc *FoldersController) HandleFolders(w http.ResponseWriter, r *http.Request, u *model.Users) {
+	log.Printf("%s, URL = %s\n", r.Method, r.URL.Path)
 	switch r.Method {
 	case http.MethodGet:
 		{
-			fc.handleGetFolders(w, u)
+			fc.handleGetFolders(w, r, u)
 		}
 	case http.MethodPost:
 		{
-			fc.handlePostFolders(w, r, u)
+			fc.handlePostFolders(w, r)
 		}
 	default:
 		{
@@ -34,7 +38,7 @@ func (fc *FoldersController) HandleFolders(w http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (fc *FoldersController) handlePostFolders(w http.ResponseWriter, r *http.Request, u *model.Users) {
+func (fc *FoldersController) handlePostFolders(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseForm()
 
 	if err != nil {
@@ -44,7 +48,8 @@ func (fc *FoldersController) handlePostFolders(w http.ResponseWriter, r *http.Re
 	}
 
 	newFolderName := r.PostFormValue("folder-name")
-	err = fc.fs.CreateNewFolder(newFolderName, u.ID)
+	newFolderParent := r.PostFormValue("folder-parent")
+	err = fc.fs.CreateNewFolder(newFolderName, uuid.MustParse(newFolderParent))
 
 	if err != nil {
 		log.Printf("Failed to create new folder %v\n", err)
@@ -52,9 +57,9 @@ func (fc *FoldersController) handlePostFolders(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	folders := fc.fs.GetFoldersFromNode(u.ID.String())
+	folders := fc.fs.GetFoldersFromNode(newFolderParent)
 
-	template, err := template.ParseFiles(filepath.Join("views", "templates", "folder-list.html"))
+	template, err := template.ParseFiles(filepath.Join("views", "templates", "folder", "folder-partials.html"))
 
 	if err != nil {
 		log.Printf("Failed to parse template HTML %v", err)
@@ -62,7 +67,7 @@ func (fc *FoldersController) handlePostFolders(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	err = template.ExecuteTemplate(w, "folder-list", folders)
+	err = template.ExecuteTemplate(w, "folder-list", struct{ Folders []model.Folders }{Folders: folders})
 
 	if err != nil {
 		log.Printf("Dailed to execute HTML template: %v\n", err)
@@ -70,8 +75,8 @@ func (fc *FoldersController) handlePostFolders(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (fc *FoldersController) handleGetFolders(w http.ResponseWriter, u *model.Users) {
-	template, err := template.ParseFiles(filepath.Join("views", "templates", "folders.html"), filepath.Join("views", "templates", "folder-list.html"), filepath.Join("views", "templates", "folder-input.html"))
+func (fc *FoldersController) handleGetFolders(w http.ResponseWriter, r *http.Request, u *model.Users) {
+	template, err := template.ParseFiles(filepath.Join("views", "templates", "layout.html"), filepath.Join("views", "templates", "folder", "folder.html"), filepath.Join("views", "templates", "folder", "folder-partials.html"), filepath.Join("views", "templates", "file", "file-partials.html"))
 
 	if err != nil {
 		log.Printf("Failed to load HTML template %s\n", err)
@@ -79,9 +84,23 @@ func (fc *FoldersController) handleGetFolders(w http.ResponseWriter, u *model.Us
 		return
 	}
 
-	folders := fc.fs.GetFoldersFromNode(u.ID.String())
+	s := strings.Split(r.URL.Path, "/")
 
-	err = template.ExecuteTemplate(w, "folders", folders)
+	var folderNode string
+
+	if len(s[len(s)-1]) == 0 {
+		folderNode = u.ID.String()
+	} else {
+		folderNode = s[len(s)-1]
+	}
+
+	folders := fc.fs.GetFoldersFromNode(folderNode)
+
+	err = template.ExecuteTemplate(w, "layout", struct {
+		Folders      []model.Folders
+		FolderPath   string
+		FolderParent string
+	}{Folders: folders, FolderPath: r.URL.Path, FolderParent: folderNode})
 
 	if err != nil {
 		log.Printf("Failed to execute HTML template %s\n", err)

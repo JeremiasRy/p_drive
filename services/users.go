@@ -29,7 +29,7 @@ func (us *UserService) NewUser(ctx context.Context, email string) error {
 		return err
 	}
 
-	err = us.ud.InsertNewUser(email, tx)
+	rowsAffected, err := us.ud.InsertNewUser(email, tx)
 
 	if err != nil {
 		fmt.Printf("Failed to insert new user: %v\n", err)
@@ -45,12 +45,14 @@ func (us *UserService) NewUser(ctx context.Context, email string) error {
 		return err
 	}
 
-	err = us.fd.CreateRootFolder(user.ID.String(), tx)
+	if rowsAffected > 0 {
+		err = us.fd.CreateRootFolder(user.ID.String(), tx)
 
-	if err != nil {
-		fmt.Printf("Failed to create root folder: %v\n", err)
-		tx.Rollback()
-		return err
+		if err != nil {
+			fmt.Printf("Failed to create root folder: %v\n", err)
+			tx.Rollback()
+			return err
+		}
 	}
 
 	return tx.Commit()

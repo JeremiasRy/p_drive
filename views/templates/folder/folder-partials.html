@@ -1,0 +1,20 @@
+{{ define "folder-input" }}
+<form id="create-folder" hx-post="/folders/" hx-target="#folders-target" hx-swap="innerHTML">
+    <input type='text' name="folder-parent" value="{{ .FolderParent }}" hidden>
+    <input type="text" name="folder-name" minLength="1" required>
+    <button>Create Folder</button>
+</form>
+{{ end }}
+
+{{ define "folder-list" }}
+<div id="folders-target" class="folders">
+    <ul>
+        {{ range .Folders }}
+        <li class="folders__folder-item"><a class="folder-item__folder-link" href="/folders/{{ .ID }}">{{ .Name }}</a>
+        </li>
+        {{ else }}
+        <li>No folders found.</li>
+        {{ end }}
+    </ul>
+</div>
+{{ end }}

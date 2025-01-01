@@ -1,6 +1,20 @@
+{{ define "file-list" }}
+<div id="files-target" class="folders">
+    <ul>
+        {{ range . }}
+        <li class="files__file-item"><a class="files__file-item" href="{{ .ID }}">{{ .Name }}</a>
+        </li>
+        {{ else }}
+        <li>No files found.</li>
+        {{ end }}
+    </ul>
+</div>
+{{ end }}
+
 {{ define "upload" }}
 <form id='file-upload-form' hx-encoding='multipart/form-data' hx-post='/upload'>
     <input type='file' name='file'>
+    <input type='text' name="folder-path" value="{{ .FolderPath }}" hidden>
     <button>
         Upload
     </button>

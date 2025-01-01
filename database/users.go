@@ -15,11 +15,16 @@ func NewUsersDb() *UsersDb {
 	return &UsersDb{}
 }
 
-func (ud *UsersDb) InsertNewUser(email string, db qrm.Executable) error {
+func (ud *UsersDb) InsertNewUser(email string, db qrm.Executable) (int64, error) {
 	stmt := table.Users.INSERT(table.Users.Email).VALUES(email).ON_CONFLICT(table.Users.Email).DO_NOTHING()
-	_, err := stmt.Exec(db)
+	res, err := stmt.Exec(db)
 
-	return err
+	if err != nil {
+		return -1, err
+	}
+
+	rows, err := res.RowsAffected()
+	return rows, err
 }
 
 func (ud *UsersDb) GetUserByEmail(email string, db qrm.Queryable) (*model.Users, error) {
