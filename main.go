@@ -108,8 +108,12 @@ func main() {
 	}
 
 	http.HandleFunc("/", vc.HandleGetRoot)
-	http.Handle("/main", middleware.NewEnsureAuth(us, store, vc.HandleGetHome))
-	http.Handle("/folders", middleware.NewEnsureAuth(us, store, fc.HandleFolders))
+	http.Handle("/folders/", middleware.NewEnsureAuth(us, store, fc.HandleFolders))
+
+	http.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
+		log.Printf("Requesting %v", r.URL.Path)
+		w.Write([]byte{'o', 'k'})
+	})
 
 	http.HandleFunc("/login", vc.HandleGetLogin)
 	http.HandleFunc("/login/github", ac.HandleGithubLogin)
