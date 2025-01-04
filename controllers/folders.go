@@ -99,7 +99,7 @@ func (fc *FoldersController) handleGetFolders(w http.ResponseWriter, r *http.Req
 		Folders      []model.Folders
 		FolderPath   string
 		FolderParent string
-	}{Folders: folders, FolderPath: r.URL.Path, FolderParent: folderNode})
+	}{Folders: folders, FolderPath: folderNode, FolderParent: folderNode})
 
 	if err != nil {
 		log.Printf("Failed to execute HTML template %s\n", err)

@@ -12,7 +12,7 @@
 {{ end }}
 
 {{ define "upload" }}
-<form id='file-upload-form' hx-encoding='multipart/form-data' hx-post='/upload'>
+<form id='file-upload-form' hx-encoding='multipart/form-data' hx-post='/files/'>
     <input type='file' name='file'>
     <input type='text' name="folder-path" value="{{ .FolderPath }}" hidden>
     <button>

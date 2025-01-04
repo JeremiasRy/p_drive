@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"backend/.gen/personal_drive/public/model"
-	"backend/database"
 	"backend/services"
 	"database/sql"
 	"fmt"
@@ -13,12 +12,12 @@ import (
 
 type FileController struct {
 	service *services.FileService
-	md      *database.MetadataDb
+	ms      *services.MetadataService
 	db      *sql.DB
 }
 
-func NewFileController(service *services.FileService, md *database.MetadataDb, db *sql.DB) *FileController {
-	return &FileController{service: service, md: md, db: db}
+func NewFileController(service *services.FileService, ms *services.MetadataService, db *sql.DB) *FileController {
+	return &FileController{service: service, ms: ms, db: db}
 }
 
 func (fc *FileController) HandleFiles(w http.ResponseWriter, r *http.Request, u *model.Users) {
@@ -50,13 +49,6 @@ func (fc *FileController) HandleGetFiles(w http.ResponseWriter, r *http.Request,
 func (fc *FileController) HandlePostUpload(w http.ResponseWriter, r *http.Request, u *model.Users) {
 	err := r.ParseMultipartForm(10 << 24)
 
-	folderPath := strings.Split(strings.TrimPrefix(r.URL.Path, "folders"), "/")
-	folder := folderPath[len(folderPath)-1]
-
-	if len(folder) == 0 {
-		folder = u.ID.String()
-	}
-
 	if err != nil {
 		log.Fatalf("Payload error: %s", err)
 		http.Error(w, "Failed to validate payload", http.StatusBadRequest)
@@ -64,6 +56,7 @@ func (fc *FileController) HandlePostUpload(w http.ResponseWriter, r *http.Reques
 	}
 
 	file, handler, err := r.FormFile("file")
+	folder := r.PostFormValue("folder-path")
 
 	name := strings.Join([]string{folder, handler.Filename}, "/")
 
@@ -81,7 +74,11 @@ func (fc *FileController) HandlePostUpload(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
 		return
 	}
-	metaData := database.NewMetadata{Folder: folder, Name: handler.Filename, SizeBytes: info.Size, Mime: handler.Header.Get("Content-Type")}
 
-	fc.md.InsertMetadata(metaData, fc.db)
+	err = fc.ms.InsertNewMetadata(handler.Filename, folder, handler.Header.Get("Content-Type"), info.Size)
+
+	if err != nil {
+		log.Printf("Failed to save metadata for file at:  %s", name)
+		http.Error(w, "Something went wrong", http.StatusBadRequest)
+	}
 }

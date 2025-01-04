@@ -89,6 +89,7 @@ func main() {
 	}
 
 	md := database.NewMetaDataDb()
+	ms := services.NewMetaDataService(db, md)
 	ud := database.NewUsersDb()
 	fd := database.NewFoldersDatabase()
 
@@ -101,7 +102,7 @@ func main() {
 		log.Fatalf("Failed to initialize file service %v", err)
 	}
 
-	fileController := controllers.NewFileController(fileService, md, db)
+	fileController := controllers.NewFileController(fileService, ms, db)
 
 	ac := controllers.NewAuthController(us, store)
 	vc := controllers.NewViewsController(fs)

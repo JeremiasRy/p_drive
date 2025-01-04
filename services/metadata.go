@@ -2,9 +2,9 @@ package services
 
 import (
 	"backend/database"
-	"context"
 	"database/sql"
-	"log"
+
+	"github.com/google/uuid"
 )
 
 type MetadataService struct {
@@ -16,15 +16,8 @@ func NewMetaDataService(db *sql.DB, md *database.MetadataDb) *MetadataService {
 	return &MetadataService{db: db, md: md}
 }
 
-func (ms *MetadataService) InsertNewMetadata(ctx context.Context, metadata database.NewMetadata) error {
-	db, err := ms.db.BeginTx(ctx, nil)
-	defer db.Commit().Error()
-
-	if err != nil {
-		log.Printf("Failed to start transaction %v", err)
-		return err
-	}
-
-	ms.md.InsertMetadata(metadata, db)
-	return nil
+func (ms *MetadataService) InsertNewMetadata(name string, folder string, mime string, size int64) error {
+	folderUUID := uuid.MustParse(folder)
+	err := ms.md.InsertMetadata(folderUUID, name, mime, size, ms.db)
+	return err
 }
