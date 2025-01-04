@@ -21,7 +21,6 @@ func NewFoldersController(fs *services.FoldersService) *FoldersController {
 }
 
 func (fc *FoldersController) HandleFolders(w http.ResponseWriter, r *http.Request, u *model.Users) {
-	log.Printf("%s, URL = %s\n", r.Method, r.URL.Path)
 	switch r.Method {
 	case http.MethodGet:
 		{

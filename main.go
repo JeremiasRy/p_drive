@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -89,14 +88,20 @@ func main() {
 		Secure:   false,
 	}
 
+	md := database.NewMetaDataDb()
 	ud := database.NewUsersDb()
 	fd := database.NewFoldersDatabase()
 
 	fs := services.NewFoldersService(db, fd)
 	us := services.NewUserService(db, ud, fd)
 
-	//fs, err := services.NewFileservice()
-	//fc := controllers.NewFileController(fs)
+	fileService, err := services.NewFileservice()
+
+	if err != nil {
+		log.Fatalf("Failed to initialize file service %v", err)
+	}
+
+	fileController := controllers.NewFileController(fileService, md, db)
 
 	ac := controllers.NewAuthController(us, store)
 	vc := controllers.NewViewsController(fs)
@@ -104,16 +109,12 @@ func main() {
 
 	if vc == nil {
 		log.Fatalf("Failed to initialize view controller")
-		os.Exit(1)
 	}
 
 	http.HandleFunc("/", vc.HandleGetRoot)
-	http.Handle("/folders/", middleware.NewEnsureAuth(us, store, fc.HandleFolders))
 
-	http.HandleFunc("/files/", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("Requesting %v", r.URL.Path)
-		w.Write([]byte{'o', 'k'})
-	})
+	http.Handle("/folders/", middleware.NewEnsureAuth(us, store, fc.HandleFolders))
+	http.Handle("/files/", middleware.NewEnsureAuth(us, store, fileController.HandleFiles))
 
 	http.HandleFunc("/login", vc.HandleGetLogin)
 	http.HandleFunc("/login/github", ac.HandleGithubLogin)

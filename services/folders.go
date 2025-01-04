@@ -12,6 +12,7 @@ import (
 type FoldersService struct {
 	db *sql.DB
 	fd *database.FoldersDatabase
+	md *database.MetadataDb
 }
 
 func NewFoldersService(db *sql.DB, fd *database.FoldersDatabase) *FoldersService {

@@ -98,11 +98,14 @@ func (ac *AuthController) HandleGithubLogin(w http.ResponseWriter, r *http.Reque
 	state := oauth2.GenerateVerifier()
 	session, err := ac.store.Get(r, c.SESSION_NAME)
 
+	log.Printf("%v\n", *session)
+
 	if err != nil {
 		log.Printf("Failed to fetch sesssion %v", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
 	session.Values[c.SESSION_VERIFIER_KEY] = state
 
 	err = session.Save(r, w)
