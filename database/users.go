@@ -3,6 +3,7 @@ package database
 import (
 	"backend/.gen/personal_drive/public/model"
 	"backend/.gen/personal_drive/public/table"
+	"fmt"
 
 	"github.com/go-jet/jet/v2/postgres"
 	"github.com/go-jet/jet/v2/qrm"
@@ -34,6 +35,7 @@ func (ud *UsersDb) GetUserByEmail(email string, db qrm.Queryable) (*model.Users,
 	err := stmt.Query(db, &user)
 
 	if err != nil {
+		fmt.Printf("Failed to query for user %v\n", err)
 		return nil, err
 	}
 	return &user, nil

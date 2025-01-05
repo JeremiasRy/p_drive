@@ -2,8 +2,7 @@
 <div id="files-target" class="folders">
     <ul>
         {{ range . }}
-        <li class="files__file-item"><a class="files__file-item" href="{{ .ID }}">{{ .Name }}</a>
-        </li>
+        {{ template "file-link" . }}
         {{ else }}
         <li>No files found.</li>
         {{ end }}
@@ -12,7 +11,7 @@
 {{ end }}
 
 {{ define "upload" }}
-<form id='file-upload-form' hx-encoding='multipart/form-data' hx-post='/files/'>
+<form id='file-upload-form' hx-encoding='multipart/form-data' hx-post='/files/' hx-target="#files-target">
     <input type='file' name='file'>
     <input type='text' name="folder-path" value="{{ .FolderPath }}" hidden>
     <button>
@@ -24,5 +23,14 @@
     htmx.on('#file-upload-form', 'htmx:xhr:progress', function (evt) {
         htmx.find('#progress').setAttribute('value', evt.detail.loaded / evt.detail.total * 100)
     });
+    htmx.on('#file-upload-form', 'htmx:afterOnLoad', function (evt) {
+        htmx.find('#progress').setAttribute('value', '0');
+        evt.detail.elt.reset();
+    });
 </script>
+{{ end }}
+
+{{ define "file-link" }}
+<li class="files__file-item"><a class="file-item__file-link" href="/files/{{ .ID }}">{{ .Name }}</a>
+</li>
 {{ end }}

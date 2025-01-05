@@ -90,8 +90,7 @@ func (ac *AuthController) HandleGithubCallback(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	http.Redirect(w, r, "/", http.StatusPermanentRedirect)
-
+	http.Redirect(w, r, "/folders/", http.StatusFound)
 }
 
 func (ac *AuthController) HandleGithubLogin(w http.ResponseWriter, r *http.Request) {

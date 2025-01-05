@@ -71,16 +71,16 @@ func NewFileservice() (*FileService, error) {
 	return &FileService{client: client}, nil
 }
 
-func (fs *FileService) UploadFile(ctx context.Context, file multipart.File, name string, contentType string) (minio.UploadInfo, error) {
+func (fs *FileService) UploadFile(ctx context.Context, file multipart.File, name string, contentType string) {
 	client := fs.client
 
 	info, err := client.PutObject(ctx, BUCKET_NAME, name, file, -1, minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
-		return minio.UploadInfo{}, err
+		log.Printf("Failed to upload file: %v\n", err)
+		return
 	}
 
 	log.Printf("Successfully uploaded %s of size %d\n", name, info.Size)
-	return info, nil
 }
 
 func (fs *FileService) GetFilesSignedLink(ctx context.Context, file *model.FileMetaData) {
@@ -99,5 +99,4 @@ func (fs *FileService) GetFilesSignedLink(ctx context.Context, file *model.FileM
 
 	url := link.String()
 	file.SignedLink = &url
-
 }

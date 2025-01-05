@@ -3,8 +3,8 @@ package controllers
 import (
 	"backend/.gen/personal_drive/public/model"
 	"backend/services"
+	"context"
 	"database/sql"
-	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -48,7 +48,6 @@ func (fc *FileController) handleGetFiles(w http.ResponseWriter, r *http.Request,
 
 	for _, file := range files {
 		fc.service.GetFilesSignedLink(r.Context(), file)
-		log.Printf("File URL: %s\n", *file.SignedLink)
 	}
 
 	tmpl, err := template.ParseFiles(filepath.Join("views", "templates", "file", "file-partials.html"))
@@ -72,10 +71,6 @@ func (fc *FileController) handlePostUpload(w http.ResponseWriter, r *http.Reques
 	}
 
 	file, handler, err := r.FormFile("file")
-	folder := r.PostFormValue("folder-path")
-
-	name := strings.Join([]string{folder, handler.Filename}, "/")
-
 	if err != nil {
 		log.Fatalf("Payload error: %s", err)
 		http.Error(w, "Failed to validate payload", http.StatusBadRequest)
@@ -83,18 +78,28 @@ func (fc *FileController) handlePostUpload(w http.ResponseWriter, r *http.Reques
 	}
 	defer file.Close()
 
-	info, err := fc.service.UploadFile(r.Context(), file, name, handler.Header.Get("Content-Type"))
+	mime := handler.Header.Get("Content-Type")
+	folder := r.PostFormValue("folder-path")
+	name := strings.Join([]string{folder, handler.Filename}, "/")
+	size := handler.Size
+
+	err = fc.ms.InsertNewMetadata(handler.Filename, folder, mime, size)
 
 	if err != nil {
-		fmt.Fprintf(w, "Failed to upload file to file server: %s", err)
+		log.Printf("Failed to save metadata for file %s, %v", name, err)
 		http.Error(w, "Something went wrong", http.StatusBadRequest)
+	}
+
+	go fc.service.UploadFile(context.WithoutCancel(r.Context()), file, name, mime)
+
+	tmpl, err := template.ParseFiles(filepath.Join("views", "templates", "file", "file-partials.html"))
+
+	if err != nil {
+		log.Printf("Failed to execute template %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	err = fc.ms.InsertNewMetadata(handler.Filename, folder, handler.Header.Get("Content-Type"), info.Size)
-
-	if err != nil {
-		log.Printf("Failed to save metadata for file at:  %s", name)
-		http.Error(w, "Something went wrong", http.StatusBadRequest)
-	}
+	folders := fc.ms.GetFilesFromFolder(folder)
+	tmpl.ExecuteTemplate(w, "file-list", folders)
 }
