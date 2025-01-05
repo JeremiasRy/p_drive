@@ -19,5 +19,6 @@ CREATE TABLE IF NOT EXISTS file_meta_data(
     folder_id UUID NOT NULL REFERENCES folders(id),
     size_bytes INT NOT NULL,
     mime TEXT NOT NULL,
-    name TEXT NOT NULL
+    name TEXT NOT NULL,
+    signed_link TEXT default null
 );

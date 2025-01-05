@@ -1,7 +1,7 @@
 {{ define "content" }}
 {{ template "folder-list" . }}
 {{ template "folder-input" . }}
-<div id="folder-files" hx-get="/files/{{ .FolderPath }}" hx-target="#folder-files" hx-trigger="load"
+<div id="folder-files" hx-get="/files/folder/{{ .FolderPath }}" hx-target="#folder-files" hx-trigger="load"
     hx-swap="innerHTML">
     Loading files...
 </div>

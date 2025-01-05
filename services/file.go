@@ -6,7 +6,10 @@ import (
 	"mime/multipart"
 	"net/url"
 	"os"
+	"strings"
 	"time"
+
+	"backend/.gen/personal_drive/public/model"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -80,23 +83,21 @@ func (fs *FileService) UploadFile(ctx context.Context, file multipart.File, name
 	return info, nil
 }
 
-func (fs *FileService) GetFilesSignedLink(ctx context.Context, files []string) ([]*url.URL, error) {
+func (fs *FileService) GetFilesSignedLink(ctx context.Context, file *model.FileMetaData) {
 	client := fs.client
 
 	reqParams := url.Values{}
-	reqParams.Add("response-content-type", "application/json")
+	reqParams.Add("response-content-type", file.Mime)
 
-	results := []*url.URL{}
+	objectKey := strings.Join([]string{file.FolderID.String(), file.Name}, "/")
 
-	for _, name := range files {
-		link, err := client.PresignedGetObject(ctx, BUCKET_NAME, name, time.Hour, reqParams)
+	link, err := client.PresignedGetObject(ctx, BUCKET_NAME, objectKey, time.Hour, reqParams)
 
-		if err != nil {
-			log.Printf("Failed to generate presigned URL for file: %s, ERROR: %s", name, err)
-			return nil, err
-		}
-		results = append(results, link)
+	if err != nil {
+		log.Printf("Failed to generate presigned URL for file: %v, ERROR: %s", file, err)
 	}
 
-	return results, nil
+	url := link.String()
+	file.SignedLink = &url
+
 }

@@ -5,8 +5,10 @@ import (
 	"backend/services"
 	"database/sql"
 	"fmt"
+	"html/template"
 	"log"
 	"net/http"
+	"path/filepath"
 	"strings"
 )
 
@@ -25,11 +27,11 @@ func (fc *FileController) HandleFiles(w http.ResponseWriter, r *http.Request, u 
 	switch r.Method {
 	case http.MethodGet:
 		{
-			fc.HandleGetFiles(w, r, u)
+			fc.handleGetFiles(w, r, u)
 		}
 	case http.MethodPost:
 		{
-			fc.HandlePostUpload(w, r, u)
+			fc.handlePostUpload(w, r, u)
 		}
 	default:
 		{
@@ -39,14 +41,28 @@ func (fc *FileController) HandleFiles(w http.ResponseWriter, r *http.Request, u 
 
 }
 
-func (fc *FileController) HandleGetFiles(w http.ResponseWriter, r *http.Request, u *model.Users) {
-	folderPath := strings.Split(strings.TrimPrefix(r.URL.Path, "folders"), "/")
+func (fc *FileController) handleGetFiles(w http.ResponseWriter, r *http.Request, u *model.Users) {
+	folderPath := strings.Split(r.URL.Path, "/")
 	folder := folderPath[len(folderPath)-1]
+	files := fc.ms.GetFilesFromFolder(folder)
 
-	log.Printf("Folder %s", folder)
+	for _, file := range files {
+		fc.service.GetFilesSignedLink(r.Context(), file)
+		log.Printf("File URL: %s\n", *file.SignedLink)
+	}
+
+	tmpl, err := template.ParseFiles(filepath.Join("views", "templates", "file", "file-partials.html"))
+
+	if err != nil {
+		log.Printf("Failed to parse template file %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	tmpl.ExecuteTemplate(w, "file-list", files)
 }
 
-func (fc *FileController) HandlePostUpload(w http.ResponseWriter, r *http.Request, u *model.Users) {
+func (fc *FileController) handlePostUpload(w http.ResponseWriter, r *http.Request, u *model.Users) {
 	err := r.ParseMultipartForm(10 << 24)
 
 	if err != nil {
