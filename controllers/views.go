@@ -17,7 +17,7 @@ func NewViewsController(fs *services.FoldersService) *ViewsController {
 }
 
 func (vc *ViewsController) HandleGetRoot(w http.ResponseWriter, r *http.Request) {
-	http.Redirect(w, r, "/folders/", http.StatusPermanentRedirect)
+	http.Redirect(w, r, "/folders/my-drive", http.StatusPermanentRedirect)
 }
 
 func (vc *ViewsController) HandleGetLogin(w http.ResponseWriter, r *http.Request) {

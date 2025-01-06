@@ -10,11 +10,21 @@
 <div id="folders-target" class="folders">
     <ul>
         {{ range .Folders }}
-        <li class="folders__folder-item"><a class="folder-item__folder-link" href="/folders/{{ .ID }}">{{ .Name }}</a>
+        <li><a href="/folders/{{ .FolderClientPath }}">{{ .Name }}</a>
         </li>
-        {{ else }}
-        <li>No folders found.</li>
         {{ end }}
     </ul>
 </div>
+{{ end }}
+
+
+{{ define "folder-breadcrumbs" }}
+<ul class="folder-breadcrumbs">
+    {{ range .Breadcrumbs }}
+    <li>
+        <h4><a class="folder-breadcrumbs__folder_link" href="/folders/{{ .FolderClientPath }}">{{ .Name }}</a></h4>
+    </li>
+    {{ end }}
+</ul>
+
 {{ end }}

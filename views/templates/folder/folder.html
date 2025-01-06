@@ -1,9 +1,12 @@
 {{ define "content" }}
-{{ template "folder-list" . }}
-{{ template "folder-input" . }}
-<div id="folder-files" hx-get="/files/folder/{{ .FolderPath }}" hx-target="#folder-files" hx-trigger="load"
-    hx-swap="innerHTML">
-    Loading files...
-</div>
-{{ template "upload" . }}
+<div>
+    {{ template "folder-breadcrumbs" . }}
+    {{ template "folder-list" . }}
+    {{ template "folder-input" . }}
+    <div id="folder-files" hx-get="/files/folder/{{ .Folder }}" hx-target="#folder-files" hx-trigger="load"
+        hx-swap="innerHTML">
+        Loading files...
+    </div>
+    {{ template "upload" . }}
+</div id="main-wrapper">
 {{ end }}

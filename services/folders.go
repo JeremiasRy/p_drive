@@ -33,3 +33,7 @@ func (fs *FoldersService) CreateNewFolder(name string, parent uuid.UUID) error {
 func (fs *FoldersService) GetFoldersFromNode(id string) []model.Folders {
 	return fs.fd.GetFoldersFromNode(id, fs.db)
 }
+
+func (fs *FoldersService) GetBreadcrumbsFromNode(id string) []model.Folders {
+	return fs.fd.GetBreadcrumbsFromFolder(id, fs.db)
+}

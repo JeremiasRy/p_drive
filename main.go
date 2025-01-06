@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -96,7 +97,7 @@ func main() {
 	fs := services.NewFoldersService(db, fd)
 	us := services.NewUserService(db, ud, fd)
 
-	fileService, err := services.NewFileservice()
+	fileService, err := services.NewFileservice(md, db)
 
 	if err != nil {
 		log.Fatalf("Failed to initialize file service %v", err)
@@ -111,8 +112,16 @@ func main() {
 	if vc == nil {
 		log.Fatalf("Failed to initialize view controller")
 	}
-
+	fileserver := http.FileServer(http.Dir("static"))
 	http.HandleFunc("/", vc.HandleGetRoot)
+	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	})
+	http.Handle("/static/", http.StripPrefix("/static/", fileserver))
+
+	http.HandleFunc("/styles.css", func(w http.ResponseWriter, r *http.Request) {
+		os.ReadFile("")
+	})
 
 	http.Handle("/folders/", middleware.NewEnsureAuth(us, store, fc.HandleFolders))
 	http.Handle("/files/", middleware.NewEnsureAuth(us, store, fileController.HandleFiles))

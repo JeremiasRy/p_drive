@@ -87,19 +87,21 @@ func (fc *FoldersController) handleGetFolders(w http.ResponseWriter, r *http.Req
 
 	var folderNode string
 
-	if len(s[len(s)-1]) == 0 {
+	if s[len(s)-1] == "my-drive" {
 		folderNode = u.ID.String()
 	} else {
 		folderNode = s[len(s)-1]
 	}
 
 	folders := fc.fs.GetFoldersFromNode(folderNode)
+	breadcrumbs := fc.fs.GetBreadcrumbsFromNode(folderNode)
 
 	err = template.ExecuteTemplate(w, "layout", struct {
+		Breadcrumbs  []model.Folders
 		Folders      []model.Folders
-		FolderPath   string
+		Folder       string
 		FolderParent string
-	}{Folders: folders, FolderPath: folderNode, FolderParent: folderNode})
+	}{Folders: folders, Folder: folderNode, FolderParent: folderNode, Breadcrumbs: breadcrumbs})
 
 	if err != nil {
 		log.Printf("Failed to execute HTML template %s\n", err)

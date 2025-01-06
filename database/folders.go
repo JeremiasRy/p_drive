@@ -1,6 +1,7 @@
 package database
 
 import (
+	"database/sql"
 	"log"
 
 	"backend/.gen/personal_drive/public/model"
@@ -13,12 +14,44 @@ import (
 
 type FoldersDatabase struct{}
 
+func (fd *FoldersDatabase) GetBreadcrumbsFromFolder(id string, db *sql.DB) []model.Folders {
+	sub := postgres.CTE("sub")
+	stmt := postgres.WITH_RECURSIVE(
+		sub.AS(
+			postgres.SELECT(
+				table.Folders.AllColumns,
+			).FROM(
+				table.Folders,
+			).WHERE(
+				table.Folders.ID.EQ(postgres.UUID(uuid.MustParse(id)))).UNION(
+				postgres.SELECT(
+					table.Folders.AllColumns,
+				).FROM(
+					table.Folders.INNER_JOIN(sub, table.Folders.ParentID.From(sub).EQ(table.Folders.ID)),
+				),
+			),
+		),
+	)(
+		postgres.SELECT(
+			sub.AllColumns(),
+		).FROM(
+			sub,
+		),
+	)
+
+	results := []model.Folders{}
+
+	stmt.Query(db, &results)
+
+	return results
+}
+
 func NewFoldersDatabase() *FoldersDatabase {
 	return &FoldersDatabase{}
 }
 
 func (fd *FoldersDatabase) CreateRootFolder(userId string, db qrm.Executable) error {
-	stmt := table.Folders.INSERT(table.Folders.ID, table.Folders.Name).VALUES(userId, "USER_ROOT")
+	stmt := table.Folders.INSERT(table.Folders.ID, table.Folders.Name, table.Folders.FolderClientPath).VALUES(userId, "My Drive", "my-drive")
 	_, err := stmt.Exec(db)
 
 	if err != nil {

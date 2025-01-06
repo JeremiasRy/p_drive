@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"mime/multipart"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"backend/.gen/personal_drive/public/model"
+	"backend/database"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -17,6 +19,8 @@ import (
 
 type FileService struct {
 	client *minio.Client
+	md     *database.MetadataDb
+	db     *sql.DB
 }
 
 var (
@@ -27,7 +31,7 @@ var (
 	REGION           = os.Getenv("MINIO_REGION")
 )
 
-func NewFileservice() (*FileService, error) {
+func NewFileservice(md *database.MetadataDb, db *sql.DB) (*FileService, error) {
 	client, err := minio.New(MINIO_URL, &minio.Options{
 		Creds: credentials.NewStaticV4(MINIO_ACCESS_KEY, MINIO_SECRET, ""),
 	})
@@ -55,7 +59,7 @@ func NewFileservice() (*FileService, error) {
 
 		if exists {
 			log.Println("Succesfully created file server client")
-			return &FileService{client: client}, nil
+			return &FileService{client: client, md: md, db: db}, nil
 		}
 		break
 	}
@@ -68,19 +72,22 @@ func NewFileservice() (*FileService, error) {
 
 	log.Printf("Successfully created bucket %s", BUCKET_NAME)
 	log.Println("Succesfully created file server client")
-	return &FileService{client: client}, nil
+	return &FileService{client: client, md: md, db: db}, nil
 }
 
-func (fs *FileService) UploadFile(ctx context.Context, file multipart.File, name string, contentType string) {
+func (fs *FileService) UploadFile(ctx context.Context, file multipart.File, name string, contentType string, fileId string) {
+	defer file.Close()
 	client := fs.client
 
 	info, err := client.PutObject(ctx, BUCKET_NAME, name, file, -1, minio.PutObjectOptions{ContentType: contentType})
 	if err != nil {
 		log.Printf("Failed to upload file: %v\n", err)
+		fs.md.UpdateFileStatus(fileId, model.FileStatus_Error, fs.db)
 		return
 	}
 
 	log.Printf("Successfully uploaded %s of size %d\n", name, info.Size)
+	fs.md.UpdateFileStatus(fileId, model.FileStatus_Ok, fs.db)
 }
 
 func (fs *FileService) GetFilesSignedLink(ctx context.Context, file *model.FileMetaData) {
