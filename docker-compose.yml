@@ -25,6 +25,9 @@ services:
           path: ./
         - action: restart
           path: ./
+        - action: sync
+          path: ./static
+          target: ./static
     ports:
       - "8080:8080"
     env_file:

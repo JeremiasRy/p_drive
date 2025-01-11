@@ -13,18 +13,27 @@ import (
 )
 
 type FoldersController struct {
-	fs *services.FoldersService
+	service *services.FileService
+	fs      *services.FoldersService
+	ms      *services.MetadataService
 }
 
-func NewFoldersController(fs *services.FoldersService) *FoldersController {
-	return &FoldersController{fs: fs}
+func NewFoldersController(fs *services.FoldersService, ms *services.MetadataService, service *services.FileService) *FoldersController {
+	return &FoldersController{fs: fs, ms: ms, service: service}
 }
 
 func (fc *FoldersController) HandleFolders(w http.ResponseWriter, r *http.Request, u *model.Users) {
 	switch r.Method {
 	case http.MethodGet:
 		{
-			fc.handleGetFolders(w, r, u)
+			path := strings.Split(strings.TrimPrefix(r.URL.Path, "/folders/"), "/")
+			folderId := path[0]
+
+			if path[len(path)-1] == "files" {
+				fc.handleGetFolderFiles(w, r, u, folderId)
+			} else {
+				fc.handleGetFolders(w, r, u)
+			}
 		}
 	case http.MethodPost:
 		{
@@ -35,6 +44,24 @@ func (fc *FoldersController) HandleFolders(w http.ResponseWriter, r *http.Reques
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
+}
+
+func (fc *FoldersController) handleGetFolderFiles(w http.ResponseWriter, r *http.Request, u *model.Users, folder string) {
+	files := fc.ms.GetFilesFromFolder(folder)
+
+	for _, file := range files {
+		fc.service.GetFilesSignedLink(r.Context(), file)
+	}
+
+	tmpl, err := template.ParseFiles(filepath.Join("views", "templates", "file", "file-partials.html"))
+
+	if err != nil {
+		log.Printf("Failed to parse template file %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	tmpl.ExecuteTemplate(w, "file-list", files)
 }
 
 func (fc *FoldersController) handlePostFolders(w http.ResponseWriter, r *http.Request) {

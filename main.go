@@ -107,16 +107,18 @@ func main() {
 
 	ac := controllers.NewAuthController(us, store)
 	vc := controllers.NewViewsController(fs)
-	fc := controllers.NewFoldersController(fs)
+	fc := controllers.NewFoldersController(fs, ms, fileService)
 
 	if vc == nil {
 		log.Fatalf("Failed to initialize view controller")
 	}
 	fileserver := http.FileServer(http.Dir("static"))
+
 	http.HandleFunc("/", vc.HandleGetRoot)
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Not Found", http.StatusNotFound)
 	})
+
 	http.Handle("/static/", http.StripPrefix("/static/", fileserver))
 
 	http.HandleFunc("/styles.css", func(w http.ResponseWriter, r *http.Request) {

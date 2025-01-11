@@ -36,7 +36,7 @@
 {{ define "file" }}
 <h1>{{ .File.Name }}</h1>
 {{ if .Uploading }}
-<div hx-get="/files/poll/{{ .File.ID }}" hx-trigger="load delay:1s" hx-target="#file">
+<div hx-get="/files/{{ .File.ID }}/poll" hx-trigger="load delay:1s" hx-target="#file">
     ...File is being processed
 </div>
 {{ end }}

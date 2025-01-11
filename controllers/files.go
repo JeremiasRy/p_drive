@@ -35,12 +35,11 @@ func (fc *FileController) HandleFiles(w http.ResponseWriter, r *http.Request, u 
 			path := strings.TrimPrefix(r.URL.Path, "/files/")
 			split := strings.Split(path, "/")
 
-			if split[0] == "folder" {
-				fc.handleGetFiles(w, r, u, split[len(split)-1])
-			} else if split[0] == "poll" {
-				fc.handleGetPollFile(w, r, u, split[len(split)-1])
+			fileId := split[0]
+			if split[len(split)-1] == "poll" {
+				fc.handleGetPollFile(w, r, u, fileId)
 			} else {
-				fc.handleGetFile(w, r, u, split[0])
+				fc.handleGetFile(w, r, u, fileId)
 			}
 
 		}
@@ -63,14 +62,12 @@ func (fc *FileController) handleGetPollFile(w http.ResponseWriter, r *http.Reque
 		log.Printf("Failed to parse template file %v\n", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
-
 	}
 
 	tmpl.ExecuteTemplate(w, "file", FileViewData{File: file, Uploading: *file.Status == model.FileStatus_Uploading})
 }
 
 func (fc *FileController) handleGetFile(w http.ResponseWriter, r *http.Request, u *model.Users, fileId string) {
-	log.Printf("Get file by id %s", fileId)
 	file := fc.ms.GetFileById(fileId)
 	tmpl, err := template.ParseFiles(filepath.Join("views", "templates", "layout.html"), filepath.Join("views", "templates", "file", "file.html"), filepath.Join("views", "templates", "file", "file-partials.html"))
 
@@ -81,24 +78,6 @@ func (fc *FileController) handleGetFile(w http.ResponseWriter, r *http.Request, 
 	}
 
 	tmpl.ExecuteTemplate(w, "layout", FileViewData{File: file, Uploading: *file.Status == model.FileStatus_Uploading})
-}
-
-func (fc *FileController) handleGetFiles(w http.ResponseWriter, r *http.Request, u *model.Users, folder string) {
-	files := fc.ms.GetFilesFromFolder(folder)
-
-	for _, file := range files {
-		fc.service.GetFilesSignedLink(r.Context(), file)
-	}
-
-	tmpl, err := template.ParseFiles(filepath.Join("views", "templates", "file", "file-partials.html"))
-
-	if err != nil {
-		log.Printf("Failed to parse template file %v\n", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-
-	tmpl.ExecuteTemplate(w, "file-list", files)
 }
 
 func (fc *FileController) handlePostUpload(w http.ResponseWriter, r *http.Request, u *model.Users) {
